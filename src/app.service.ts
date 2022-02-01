@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
+const Web3 = require('web3');
+const web3 = new Web3(
+  'https://mainnet.infura.io/v3/1bd40ac2693f48159476e5b426280f6a',
+);
 interface List {
   address: string;
   page: number;
@@ -21,10 +25,12 @@ export class AppService {
   }
   async callApi(list: List[]) {
     try {
+      const endBlock = await web3.eth.getBlockNumber();
+
       let request = await Promise.all(
         list.map((value) => {
           return axios.get(
-            `https://api.etherscan.io/api?module=account&action=txlist&address=${value.address}&startblock=0&endblock=14118458&page=${value.page}&offset=${value.offset}&sort=asc&apikey=3SAJ8EXQMXKXDFZPW14S2XVFKPIGZ6JMW2`,
+            `https://api.etherscan.io/api?module=account&action=txlist&address=${value.address}&startblock=0&endblock=${endBlock}&page=${value.page}&offset=${value.offset}&sort=asc&apikey=3SAJ8EXQMXKXDFZPW14S2XVFKPIGZ6JMW2`,
           );
         }),
       );
@@ -106,19 +112,37 @@ export class AppService {
           page: 15,
           offset: 600,
         },
+        {
+          address,
+          page: 16,
+          offset: 600,
+        },
+        {
+          address,
+          page: 17,
+          offset: 550,
+        },
+        {
+          address,
+          page: 18,
+          offset: 500,
+        },
+        {
+          address,
+          page: 19,
+          offset: 450,
+        },
       ];
 
       let transactions = [];
-      let result = [];
+
       const request = await this.callApi(list);
-      transactions = request
-        .map((value) => {
-          if (value.data.status == 1) {
-            result = [...transactions, ...value.data.result];
-          }
-          return result;
-        })
-        .flat();
+
+      for (let i = 0; i < request.length; i++) {
+        if (request[i].data.status == 1) {
+          transactions = [...transactions, ...request[i].data.result];
+        }
+      }
       const getCount = this.getCount(transactions);
       return getCount;
     } catch (error) {
