@@ -1,30 +1,44 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
-interface List {
-  address: string;
-  page: number;
-  offset: number;
-}
+const moment = require('moment');
+const Web3 = require('web3');
+const web3 = new Web3(
+  'https://mainnet.infura.io/v3/1bd40ac2693f48159476e5b426280f6a',
+);
+
 @Injectable()
 export class AppService {
-  getHello(): string {
-    return 'Hello World!';
+  getTransactionByTimeStamp(transactions) {
+    const uniqueIds = [];
+    const unique = transactions
+      .filter((element) => {
+        const isDuplicate = uniqueIds.includes(element.from);
+        if (!isDuplicate) {
+          uniqueIds.push(element.from);
+          return true;
+        }
+      })
+      .map((element) => {
+        return {
+          from: element.from,
+          month: moment.unix(element.timeStamp).format('MM'),
+          year: moment.unix(element.timeStamp).format('YY'),
+        };
+      });
+    return unique;
   }
-  getCount(transactions) {
-    let mymap = new Map();
-    let unique = Array.from(
-      new Set(transactions.map((item: any) => item.from)),
-    );
-    console.log(unique.length, '===>length');
 
-    return unique.length;
-  }
-  async callApi(list: List[]) {
+  async callApi(lastPageNumber: number, address: string) {
     try {
+      const endBlock = await web3.eth.getBlockNumber();
       let request = await Promise.all(
-        list.map((value) => {
+        [...Array(lastPageNumber).keys()].map((page, index) => {
           return axios.get(
-            `https://api.etherscan.io/api?module=account&action=txlist&address=${value.address}&startblock=0&endblock=14118458&page=${value.page}&offset=${value.offset}&sort=asc&apikey=3SAJ8EXQMXKXDFZPW14S2XVFKPIGZ6JMW2`,
+            `https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=${endBlock}&page=${
+              page + 1
+            }&offset=${
+              index < 10 ? 1000 : 1000 - (index - 9) * 100
+            }&sort=asc&apikey=3SAJ8EXQMXKXDFZPW14S2XVFKPIGZ6JMW2`,
           );
         }),
       );
@@ -35,104 +49,80 @@ export class AppService {
   }
   async fetchTransactions(address: string) {
     try {
-      const list = [
-        {
-          address,
-          page: 1,
-          offset: 1000,
-        },
-        {
-          address,
-          page: 2,
-          offset: 1000,
-        },
-        {
-          address,
-          page: 3,
-          offset: 1000,
-        },
-        {
-          address,
-          page: 4,
-          offset: 1000,
-        },
-        {
-          address,
-          page: 5,
-          offset: 1000,
-        },
-        {
-          address,
-          page: 6,
-          offset: 1000,
-        },
-        {
-          address,
-          page: 7,
-          offset: 1000,
-        },
-        {
-          address,
-          page: 8,
-          offset: 1000,
-        },
-        {
-          address,
-          page: 9,
-          offset: 1000,
-        },
-        {
-          address,
-          page: 11,
-          offset: 900,
-        },
-        {
-          address,
-          page: 12,
-          offset: 800,
-        },
-        {
-          address,
-          page: 13,
-          offset: 700,
-        },
-        {
-          address,
-          page: 14,
-          offset: 700,
-        },
-        {
-          address,
-          page: 15,
-          offset: 600,
-        },
-      ];
-
-      let transactions = [];
-      let result = [];
-      const request = await this.callApi(list);
-      transactions = request
-        .map((value) => {
-          if (value.data.status == 1) {
-            result = [...transactions, ...value.data.result];
-          }
-          return result;
-        })
-        .flat();
-      const getCount = this.getCount(transactions);
-      return getCount;
+      let [transactions, lastPageNumber] = [[], 2];
+      const request = await this.callApi(lastPageNumber, address);
+      for (let i = 0; i < request.length; i++) {
+        if (request[i].data.status == 1) {
+          transactions = [...transactions, ...request[i].data.result];
+        }
+      }
+      const getTransactionByTimeStamp =
+        this.getTransactionByTimeStamp(transactions);
+      return getTransactionByTimeStamp;
     } catch (error) {
       return error;
     }
   }
+  getNoOfUsersByMonth(fetchTransactions) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    let currentMonth, currentYear;
+    let [usersByMonth, storedIndex, counter] = [[], 0, 0];
 
+    for (let i = 0; i < fetchTransactions.length; i++) {
+      currentYear = fetchTransactions[i].year;
+      currentMonth = fetchTransactions[i].month;
+      if (i == 0) {
+        counter++;
+        usersByMonth[i] = {
+          [`${months[+currentMonth - 1]}-${currentYear}`]: `No of users in ${
+            months[+currentMonth - 1]
+          } and year ${currentYear} with count ${counter} `,
+        };
+      } else if (
+        currentYear == fetchTransactions[i - 1].year &&
+        currentMonth == fetchTransactions[i - 1].month
+      ) {
+        counter++;
+        usersByMonth[storedIndex] = {
+          [`${months[+currentMonth - 1]}-${currentYear}`]: `No of users in ${
+            months[+currentMonth - 1]
+          } and year ${currentYear} with count ${counter} `,
+        };
+      } else {
+        counter = 1;
+        storedIndex = storedIndex + 1;
+        usersByMonth[storedIndex] = {
+          [`${months[+currentMonth - 1]}-${currentYear}`]: `No of users in ${
+            months[+currentMonth - 1]
+          } and year ${currentYear} with count ${counter} `,
+        };
+      }
+    }
+
+    return usersByMonth;
+  }
   async getUsers() {
     try {
       const address = '0x6b175474e89094c44da98b954eedeac495271d0f';
       const fetchTransactions = await this.fetchTransactions(address);
+      const usersByMonth = this.getNoOfUsersByMonth(fetchTransactions);
       return {
         signal: 'okay',
-        data: fetchTransactions,
+        usersByMonth,
+        totalUsers: fetchTransactions.length,
       };
     } catch (error) {
       return error;
