@@ -8,7 +8,7 @@ const web3 = new Web3(
 
 @Injectable()
 export class AppService {
-  getCount(transactions) {
+  getTransactionByTimeStamp(transactions) {
     const uniqueIds = [];
     const unique = transactions
       .filter((element) => {
@@ -21,8 +21,8 @@ export class AppService {
       .map((element) => {
         return {
           from: element.from,
-          timeStamp: moment.unix(element.timeStamp).format('MM-YY'),
-          timeStamp2: element.timeStamp,
+          month: moment.unix(element.timeStamp).format('MM'),
+          year: moment.unix(element.timeStamp).format('YY'),
         };
       });
     return unique;
@@ -31,7 +31,6 @@ export class AppService {
   async callApi(lastPageNumber: number, address: string) {
     try {
       const endBlock = await web3.eth.getBlockNumber();
-      let list = [{ page: 1, offset: 1000 }];
       let request = await Promise.all(
         [...Array(lastPageNumber).keys()].map((page, index) => {
           return axios.get(
@@ -57,8 +56,9 @@ export class AppService {
           transactions = [...transactions, ...request[i].data.result];
         }
       }
-      const getCount = this.getCount(transactions);
-      return getCount;
+      const getTransactionByTimeStamp =
+        this.getTransactionByTimeStamp(transactions);
+      return getTransactionByTimeStamp;
     } catch (error) {
       return error;
     }
@@ -82,8 +82,8 @@ export class AppService {
     let [usersByMonth, storedIndex, counter] = [[], 0, 0];
 
     for (let i = 0; i < fetchTransactions.length; i++) {
-      currentYear = fetchTransactions[i].timeStamp.slice(3, 5);
-      currentMonth = fetchTransactions[i].timeStamp.slice(0, 2);
+      currentYear = fetchTransactions[i].year;
+      currentMonth = fetchTransactions[i].month;
       if (i == 0) {
         counter++;
         usersByMonth[i] = {
@@ -92,8 +92,8 @@ export class AppService {
           } and year ${currentYear} with count ${counter} `,
         };
       } else if (
-        currentYear == fetchTransactions[i - 1].timeStamp.slice(3, 5) &&
-        currentMonth == fetchTransactions[i - 1].timeStamp.slice(0, 2)
+        currentYear == fetchTransactions[i - 1].year &&
+        currentMonth == fetchTransactions[i - 1].month
       ) {
         counter++;
         usersByMonth[storedIndex] = {
