@@ -7,6 +7,7 @@ export class AppController {
   @Get('/allusers')
   async getUsers() {
     try {
+      console.log('any');
       return await this.appService.getUsers();
     } catch (error) {
       return error;

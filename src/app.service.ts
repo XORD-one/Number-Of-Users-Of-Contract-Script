@@ -10,21 +10,13 @@ const web3 = new Web3(
 export class AppService {
   getTransactionByTimeStamp(transactions) {
     const uniqueIds = [];
-    const unique = transactions
-      .filter((element) => {
-        const isDuplicate = uniqueIds.includes(element.from);
-        if (!isDuplicate) {
-          uniqueIds.push(element.from);
-          return true;
-        }
-      })
-      .map((element) => {
-        return {
-          from: element.from,
-          month: moment.unix(element.timeStamp).format('MM'),
-          year: moment.unix(element.timeStamp).format('YY'),
-        };
-      });
+    const unique = transactions.map((element) => {
+      return {
+        from: element.from,
+        month: moment.unix(element.timeStamp).format('MM'),
+        year: moment.unix(element.timeStamp).format('YY'),
+      };
+    });
     return unique;
   }
 
@@ -34,11 +26,10 @@ export class AppService {
       let request = await Promise.all(
         [...Array(lastPageNumber).keys()].map((page, index) => {
           return axios.get(
-            `https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=${endBlock}&page=${
-              page + 1
-            }&offset=${
+            `https://api.bscscan.com/api?module=account&action=txlist&address=${address}&startblock=11265058
+&endblock=${endBlock}&page=${page + 1}&offset=${
               index < 10 ? 1000 : 1000 - (index - 9) * 100
-            }&sort=asc&apikey=3SAJ8EXQMXKXDFZPW14S2XVFKPIGZ6JMW2`,
+            }&sort=asc&apikey=7QC1AKJ3E3BFV214YAGHF2YEPWIEYSYA2W`,
           );
         }),
       );
@@ -49,7 +40,8 @@ export class AppService {
   }
   async fetchTransactions(address: string) {
     try {
-      let [transactions, lastPageNumber] = [[], 2];
+      let [transactions, lastPageNumber] = [[], 3];
+      console.log(lastPageNumber, 'lastPageNumber');
       const request = await this.callApi(lastPageNumber, address);
       for (let i = 0; i < request.length; i++) {
         if (request[i].data.status == 1) {
@@ -79,35 +71,40 @@ export class AppService {
       'December',
     ];
     let currentMonth, currentYear;
+    // console.log(fetchTransactions, 'fetched');
     let [usersByMonth, storedIndex, counter] = [[], 0, 0];
-
+    let usersByEachMonth = [];
+    let uniqueIds = [];
     for (let i = 0; i < fetchTransactions.length; i++) {
       currentYear = fetchTransactions[i].year;
       currentMonth = fetchTransactions[i].month;
+      console.log(currentMonth, 'currentMonth', currentYear);
       if (i == 0) {
-        counter++;
-        usersByMonth[i] = {
-          [`${months[+currentMonth - 1]}-${currentYear}`]: `No of users in ${
-            months[+currentMonth - 1]
-          } and year ${currentYear} with count ${counter} `,
+        usersByEachMonth = [...usersByEachMonth, fetchTransactions[i].from];
+        usersByMonth[storedIndex] = {
+          [`${months[+currentMonth - 1]}-${currentYear}`]:
+            usersByEachMonth.length,
         };
       } else if (
         currentYear == fetchTransactions[i - 1].year &&
         currentMonth == fetchTransactions[i - 1].month
       ) {
-        counter++;
+        usersByEachMonth = [...usersByEachMonth, fetchTransactions[i].from];
+        usersByEachMonth = [...new Set(usersByEachMonth)];
+
+        console.log(usersByEachMonth.length, 'filter');
         usersByMonth[storedIndex] = {
-          [`${months[+currentMonth - 1]}-${currentYear}`]: `No of users in ${
-            months[+currentMonth - 1]
-          } and year ${currentYear} with count ${counter} `,
+          [`${months[+currentMonth - 1]}-${currentYear}`]:
+            usersByEachMonth.length,
         };
       } else {
-        counter = 1;
         storedIndex = storedIndex + 1;
+        usersByEachMonth = [fetchTransactions[i].from];
+        usersByEachMonth = [...new Set(usersByEachMonth)];
+
         usersByMonth[storedIndex] = {
-          [`${months[+currentMonth - 1]}-${currentYear}`]: `No of users in ${
-            months[+currentMonth - 1]
-          } and year ${currentYear} with count ${counter} `,
+          [`${months[+currentMonth - 1]}-${currentYear}`]:
+            usersByEachMonth.length,
         };
       }
     }
@@ -116,11 +113,13 @@ export class AppService {
   }
   async getUsers() {
     try {
-      const address = '0x6b175474e89094c44da98b954eedeac495271d0f';
+      const address = '0xFcf76D183D7AB3E979505D31CdA1315F68100317';
       const fetchTransactions = await this.fetchTransactions(address);
       const usersByMonth = this.getNoOfUsersByMonth(fetchTransactions);
+
       return {
         signal: 'okay',
+        // unique,
         usersByMonth,
         totalUsers: fetchTransactions.length,
       };
@@ -129,3 +128,7 @@ export class AppService {
     }
   }
 }
+//  const address = '0x66663724b50f4EA40e5ceD7Fc5181fE1816cE0C4'; lp stacking
+// "0xf48E0D934B505C80b6dD3ef4d178D7c8fB83f566"
+//  api key fpr eth 3SAJ8EXQMXKXDFZPW14S2XVFKPIGZ6JMW2
+// api key for bsc 7QC1AKJ3E3BFV214YAGHF2YEPWIEYSYA2W
