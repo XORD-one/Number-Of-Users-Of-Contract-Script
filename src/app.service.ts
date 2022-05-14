@@ -142,7 +142,26 @@ export class AppService {
       return error;
     }
   }
+  async getProjects() {
+    try {
+      const response = await axios.get(
+        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=200&page=1&sparkline=false',
+      );
+      const { data } = response;
+      console.log(data[0], 'data');
+      return data.map((value) => {
+        return {
+          name: value.name,
+          market_cap: value.market_cap,
+          total_volume: value.total_volume,
+        };
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
 }
+
 //  const address = '0x66663724b50f4EA40e5ceD7Fc5181fE1816cE0C4'; lp stacking
 // "0xf48E0D934B505C80b6dD3ef4d178D7c8fB83f566"
 //  api key fpr eth 3SAJ8EXQMXKXDFZPW14S2XVFKPIGZ6JMW2

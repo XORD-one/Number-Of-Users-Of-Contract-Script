@@ -14,4 +14,12 @@ export class AppController {
       return error;
     }
   }
+  @Get('/projects')
+  async getProjects() {
+    try {
+      return await this.appService.getProjects();
+    } catch (error) {
+      return error;
+    }
+  }
 }
