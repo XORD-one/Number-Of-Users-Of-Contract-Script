@@ -5,7 +5,16 @@ const Web3 = require('web3');
 const web3 = new Web3(
   'https://mainnet.infura.io/v3/1bd40ac2693f48159476e5b426280f6a',
 );
-
+const chainMap = {
+  1: {
+    url: '',
+    apiKey: '',
+  },
+  56: {
+    url: 'https://api.bscscan.com',
+    apiKey: '7QC1AKJ3E3BFV214YAGHF2YEPWIEYSYA2W',
+  },
+};
 @Injectable()
 export class AppService {
   getTransactionByTimeStamp(transactions) {
@@ -20,14 +29,17 @@ export class AppService {
     return unique;
   }
 
-  async callApi(lastPageNumber: number, address: string) {
+  async callApi(lastPageNumber: number, address: string, body) {
     try {
       const endBlock = await web3.eth.getBlockNumber();
+      console.log(endBlock, 'endBlock');
       let request = await Promise.all(
         [...Array(lastPageNumber).keys()].map((page, index) => {
           return axios.get(
-            `https://api.bscscan.com/api?module=account&action=txlist&address=${address}&startblock=11265058
-&endblock=${endBlock}&page=${page + 1}&offset=${
+            `https://api.bscscan.com/api?module=account&action=txlist&address=${address}&startblock=${
+              body.startblock
+            }
+&endblock=${body.endBlock}&page=${page + 1}&offset=${
               index < 10 ? 1000 : 1000 - (index - 9) * 100
             }&sort=asc&apikey=7QC1AKJ3E3BFV214YAGHF2YEPWIEYSYA2W`,
           );
@@ -38,11 +50,11 @@ export class AppService {
       return error;
     }
   }
-  async fetchTransactions(address: string) {
+  async fetchTransactions(address: string, body) {
     try {
       let [transactions, lastPageNumber] = [[], 3];
       console.log(lastPageNumber, 'lastPageNumber');
-      const request = await this.callApi(lastPageNumber, address);
+      const request = await this.callApi(lastPageNumber, address, body);
       for (let i = 0; i < request.length; i++) {
         if (request[i].data.status == 1) {
           transactions = [...transactions, ...request[i].data.result];
@@ -111,17 +123,20 @@ export class AppService {
 
     return usersByMonth;
   }
-  async getUsers() {
+  async getUsers(body) {
     try {
       const address = '0xFcf76D183D7AB3E979505D31CdA1315F68100317';
-      const fetchTransactions = await this.fetchTransactions(address);
+      const fetchTransactions = await this.fetchTransactions(
+        body.address,
+        body,
+      );
       const usersByMonth = this.getNoOfUsersByMonth(fetchTransactions);
 
       return {
         signal: 'okay',
         // unique,
         usersByMonth,
-        totalUsers: fetchTransactions.length,
+        // totalUsers: fetchTransactions.length,
       };
     } catch (error) {
       return error;
