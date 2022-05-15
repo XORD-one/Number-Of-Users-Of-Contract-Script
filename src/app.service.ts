@@ -31,17 +31,30 @@ export class AppService {
 
   async callApi(lastPageNumber: number, address: string, body) {
     try {
+      const chainMap = {
+        1: {
+          url: 'https://api.etherscan.io',
+          apiKey: '3SAJ8EXQMXKXDFZPW14S2XVFKPIGZ6JMW2',
+        },
+        56: {
+          url: 'https://api.bscscan.com',
+          apiKey: '7QC1AKJ3E3BFV214YAGHF2YEPWIEYSYA2W',
+        },
+      };
+      console.log(chainMap[body.network]['apiKey']);
+      const url = chainMap[body.network]['url'];
+      const apiKey = chainMap[body.network]['apiKey'];
       const endBlock = await web3.eth.getBlockNumber();
       console.log(endBlock, 'endBlock');
       let request = await Promise.all(
         [...Array(lastPageNumber).keys()].map((page, index) => {
           return axios.get(
-            `https://api.bscscan.com/api?module=account&action=txlist&address=${address}&startblock=${
+            `${url}/api?module=account&action=txlist&address=${address}&startblock=${
               body.startblock
             }
 &endblock=${body.endBlock}&page=${page + 1}&offset=${
               index < 10 ? 1000 : 1000 - (index - 9) * 100
-            }&sort=asc&apikey=7QC1AKJ3E3BFV214YAGHF2YEPWIEYSYA2W`,
+            }&sort=asc&apikey=${apiKey}`,
           );
         }),
       );
